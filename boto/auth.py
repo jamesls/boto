@@ -376,6 +376,11 @@ class HmacAuthV4Handler(AuthHandler, HmacKeys):
 
     def payload(self, http_request):
         body = http_request.body
+        # If the sha256 happens to be in a header already we don't have to
+        # compute it.
+        precomputed = http_request.headers.get('x-amz-content-sha256')
+        if precomputed is not None:
+            return precomputed
         # If the body is a file like object, we can use
         # boto.utils.compute_hash, which will avoid reading
         # the entire body into memory.

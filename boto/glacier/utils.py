@@ -114,14 +114,18 @@ def bytes_to_hex(str_as_bytes):
     return ''.join(["%02x" % ord(x) for x in str_as_bytes]).strip()
 
 
-class ResettingFileSender(object):
+class ResettingSender(object):
     def __init__(self, archive):
         self._archive = archive
-        self._starting_offset = archive.tell()
+        try:
+            self._starting_offset = archive.tell()
+        except AttributeError:
+            self._starting_offset = none
 
     def __call__(self, connection, method, path, body, headers):
         try:
             connection.request(method, path, self._archive, headers)
             return connection.getresponse()
         finally:
-            self._archive.seek(self._starting_offset)
+            if self._starting_offset is not None:
+                self._archive.seek(self._starting_offset)

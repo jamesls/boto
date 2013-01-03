@@ -29,7 +29,7 @@ from boto.compat import json
 from boto.connection import AWSAuthConnection
 from .exceptions import UnexpectedHTTPResponseError
 from .response import GlacierResponse
-from .utils import ResettingFileSender
+from .utils import ResettingSender
 
 
 class Layer1(AWSAuthConnection):
@@ -431,17 +431,10 @@ class Layer1(AWSAuthConnection):
                    'Content-Length': content_length}
         if description:
             headers['x-amz-archive-description'] = description
-        if self._is_file_like(archive):
-            sender = ResettingFileSender(archive)
-        else:
-            sender = None
         return self.make_request('POST', uri, headers=headers,
-                                sender=sender,
-                                data=archive, ok_responses=(201,),
-                                response_headers=response_headers)
-
-    def _is_file_like(self, archive):
-        return hasattr(archive, 'seek') and hasattr(archive, 'tell')
+                                 sender=ResettingSender(archive),
+                                 data='', ok_responses=(201,),
+                                 response_headers=response_headers)
 
     def delete_archive(self, vault_name, archive_id):
         """
