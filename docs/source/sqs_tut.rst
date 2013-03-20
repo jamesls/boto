@@ -244,3 +244,61 @@ messages in a queue to a local file:
 This will read all of the messages in the queue and write the bodies of
 each of the messages to the file messages.txt.  The option sep argument
 is a separator that will be printed between each message body in the file.
+
+==========
+MultiQueue
+==========
+
+You can use the ``MultiQueue`` to efficiently (and concurrently) poll on
+multiple queues.  In it's simplest usage, you give it a list of queues
+and call ``get()``::
+
+    queues = sqs.get_all_queues()
+    mq = MultiQueue(queues)
+    while True:
+        message = mq.get()
+        print("Got message:", message.get_body())
+        print("From queue:", message.queue)
+
+
+By default, ``get()`` will block until a message is available on one
+of the queues::
+
+    while True:
+        # Will block until a message is available from one of the queues.
+        message = mq.get(block=True)
+
+
+If ``get()`` is called with ``block=False`` and no messages are available,
+then a ``multiqueue.Empty`` exception will be raised.
+
+You can also use MultiQueue to efficiently write messages to SQS::
+
+    mq = MultiQueue([sqs.get_queue('queue1'), sqs.get_queue('queue2')])
+    for i in range(100):
+        mq.put(body='body', queue_name='queue1')
+        mq.put(body='body', queue_name='queue2')
+
+
+Why use MultiQueue?
+-------------------
+
+MultiQueue provides several useful features:
+
+* MultiQueue utilizes SQS Long Polling to minimize the number of requests
+  made to SQS.
+* MultiQueue will concurrently poll all of the queues it is provided.
+* MultiQueue will read messages in batch, while still allowing you to
+  use the simple ``get()`` method.
+* MultiQueue uses batching to ``send_message_batch`` to send messages
+  in batch to minimize the number of requests sent to SQS, which
+  increases the throughput of messages you can send.
+* MultiQueue will use the message class associated with the passed
+  in ``Queue`` object.  You don't have to create message objects yourself.
+
+
+Caveats
+-------
+
+* A thread is created per passed in queue.  If MultiQueue is watching
+  10 queues, then 10 threads will be created.
